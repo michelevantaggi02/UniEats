@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'App Mensa',
-      theme: ThemeData.light(),
+      theme: ThemeData(primarySwatch: Colors.amber),
       darkTheme: ThemeData.dark(),
 
       home: validCookie ? const MyHomePage() : const LoginPage(),
