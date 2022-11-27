@@ -1,16 +1,9 @@
 # mensa_adisu
 
-A new Flutter project.
+Progetto per vedere i menu della mensa dell'adisu.adisu
 
-## Getting Started
+## Pensato dagli studenti per gli studenti
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
-
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Ero stanco di dover andare sempre sul sito [intrastudents](intrastudents.adisu.umbria.it) e dover leggere il menu del giorno con quei font enormi e lo sfondo giallo.
+Quindi mi sono messo giù e dopo un bel po' di webscraping sono riuscito a tirare fuori le informazioni di cui avevo bisogno, riorganizzandole tutte
+in un modo più comodo da leggere tramite telefono, con un pizzico di stile in più.
