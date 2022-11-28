@@ -25,11 +25,21 @@ class LoginState extends State<LoginPage> {
   late ElevatedButton buttonLogin;
   String? url  ="";
 
+  void controllaCookie() async{
+    final CookieManager manager = CookieManager.instance();
+    //print("controllo i cookie");
+    List<Cookie> cook = await manager.getCookies(url: Uri.parse("https://intrastudents.adisu.umbria.it"));
+    int lun = cook.length;
+    //print(cook.length);
+    if(lun == 3){
+      vaiHome();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-
+    controllaCookie();
     headlessWebView = HeadlessInAppWebView(
       initialUrlRequest:
       URLRequest(url: Uri.parse("https://intrastudents.adisu.umbria.it")),
@@ -40,22 +50,26 @@ class LoginState extends State<LoginPage> {
         });
         this.controller = controller;
       },
-      onLoadStart: (InAppWebViewController controller, url) async {
+      onLoadStart: (InAppWebViewController controller, url) {
         //print(url);
-        CookieManager manager = CookieManager.instance();
-        if(url.toString() == "https://intrastudents.adisu.umbria.it/intrastudents?check_logged_in=1" || (await manager.getCookies(
-        url: Uri.parse("https://intrastudents.adisu.umbria.it"))).length == 3){
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const MyHomePage()),
-                (Route<dynamic> route) => false,
-          );
+
+
+        if(url.toString() == "https://intrastudents.adisu.umbria.it/intrastudents?check_logged_in=1"){
+          vaiHome();
         }
       }
     );
 
     headlessWebView?.run();
+  }
+
+  void vaiHome(){
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+          builder: (context) => const MyHomePage()),
+          (Route<dynamic> route) => false,
+    );
   }
 
   @override

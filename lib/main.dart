@@ -10,17 +10,20 @@ import 'login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  CookieManager manager = CookieManager.instance();
-  cookies = await manager.getCookies(
-      url: Uri.parse("https://intrastudents.adisu.umbria.it"));
-  //print(cookies);
-  validCookie = cookies?.length == 3;
+  checkCookies();
   // print(valid_cookie);
   runApp(const MyApp());
 }
 
 List? cookies;
-bool validCookie = false;
+
+Future<int> checkCookies() async {
+  final CookieManager manager = CookieManager.instance();
+  cookies = await manager.getCookies(
+      url: Uri.parse("https://intrastudents.adisu.umbria.it"));
+  //print(cookies);
+  return 0;
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -28,11 +31,11 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    bool validCookie = cookies?.length == 3;
     return MaterialApp(
       title: 'App Mensa',
       theme: ThemeData(primarySwatch: Colors.amber),
       darkTheme: ThemeData.dark(),
-
       home: validCookie ? const MyHomePage() : const LoginPage(),
     );
   }
@@ -50,99 +53,110 @@ class _MyHomePageState extends State<MyHomePage>
   List<dynamic> listaMense = [];
 
   void ottieni() {
-    String biscotti = "";
-    cookies?.forEach((element) {
-      biscotti += element.name + "=" + element.value + "; ";
-    });
+    checkCookies().then((value) {
+      String biscotti = "";
 
-    // print("inizio la richiesta delle mense");
-    var risposta = get(
-        Uri.parse(
-            'https://intrastudents.adisu.umbria.it/prenotazioni-mensa?_wrapper_format=drupal_ajax'),
-        headers: {"Cookie": biscotti});
+      cookies?.forEach((element) {
+        biscotti += element.name + "=" + element.value + "; ";
+      });
 
+      // print("inizio la richiesta delle mense");
+      var risposta = get(
+          Uri.parse(
+              'https://intrastudents.adisu.umbria.it/prenotazioni-mensa?_wrapper_format=drupal_ajax'),
+          headers: {"Cookie": biscotti});
 
-    List<dynamic> mense = [];
-    risposta.then((Response value) {
-      if(value.statusCode != 200){
-        CookieManager.instance().deleteAllCookies();
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const LoginPage()),
-              (Route<dynamic> route) => false,
-        );
-      }
-      String stringa = jsonDecode(value.body)[3]["data"];
-      //print(stringa);
-      var base = parse(stringa);
+      List<dynamic> mense = [];
 
-      base
-          .querySelectorAll("div.flex-container > div[style=\"flex-grow: 1\"]")
-          .forEach((element) {
-        String? nomeMensa =
-            element.querySelector("h4")?.text.replaceAll("Mensa ", "").trim();
+      risposta.then((Response value) {
+        if (value.statusCode != 200) {
+          CookieManager.instance().deleteAllCookies();
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (Route<dynamic> route) => false,
+          );
+        }
+        String stringa = jsonDecode(value.body)[3]["data"];
+        //print(stringa);
+        var base = parse(stringa);
 
-        String? gestore = element
-            .querySelector(
-              "span.views-field-field-gestore-mensa > span.field-content",
-            )
-            ?.text;
+        base
+            .querySelectorAll(
+                "div.flex-container > div[style=\"flex-grow: 1\"]")
+            .forEach((element) {
+          String? nomeMensa =
+              element.querySelector("h4")?.text.replaceAll("Mensa ", "").trim();
 
-        var stato = element.querySelector(
-            "div.views-field-views-conditional-field > span.field-content");
-        String? servizio = stato?.querySelector(".w3-btn")?.text.trim();
-         List? giorni = stato?.querySelectorAll(".office-hours > .office-hours__item > .office-hours__item-label");
-         List? ore = stato?.querySelectorAll(".office-hours > .office-hours__item > .office-hours__item-slots");
-         String orario = "";
-         for(int i = 0; i< min(giorni!.length, ore!.length); i++){
-           orario += giorni[i].text+""+ore[i].text+"\n";
+          String? gestore = element
+              .querySelector(
+                "span.views-field-field-gestore-mensa > span.field-content",
+              )
+              ?.text;
 
-         }
-        var menu = element.querySelector(".w3-modal");
+          var stato = element.querySelector(
+              "div.views-field-views-conditional-field > span.field-content");
+          String? servizio = stato?.querySelector(".w3-btn")?.text.trim();
+          List? giorni = stato?.querySelectorAll(
+              ".office-hours > .office-hours__item > .office-hours__item-label");
+          List? ore = stato?.querySelectorAll(
+              ".office-hours > .office-hours__item > .office-hours__item-slots");
+          String orario = "";
+          for (int i = 0; i < min(giorni!.length, ore!.length); i++) {
+            orario += giorni[i].text + "" + ore[i].text + "\n";
+          }
+          var menu = element.querySelector(".w3-modal");
 
-        List<Map?> listaMenu = [];
+          List<Map?> listaMenu = [];
 
-        menu
-            ?.querySelectorAll(".w3-container .w3-row-padding .w3-col")
-            .forEach((ora) {
-          Map<String, dynamic> nuovoMenu = {};
-          nuovoMenu["nome"] = ora.querySelector("header > p")?.text;
-          nuovoMenu["contenuti"] = [];
+          menu
+              ?.querySelectorAll(".w3-container .w3-row-padding .w3-col")
+              .forEach((ora) {
+            Map<String, dynamic> nuovoMenu = {};
+            nuovoMenu["nome"] = ora.querySelector("header > p")?.text;
+            nuovoMenu["contenuti"] = [];
 
-          //print(ora.innerHtml);
-          // print(ora.querySelectorAll("div.view-content > div.w3-center > .w3-border-bottom"));
-          ora.querySelectorAll(
-                  "div.view-content > div.w3-center > div.w3-border-bottom")
-              .forEach((contenuto) {
+            //print(ora.innerHtml);
+            // print(ora.querySelectorAll("div.view-content > div.w3-center > .w3-border-bottom"));
+            ora
+                .querySelectorAll(
+                    "div.view-content > div.w3-center > div.w3-border-bottom")
+                .forEach((contenuto) {
+              Map listaContenuti = {};
+              String? nomeContenuto = contenuto.querySelector("h4")?.text;
 
-            Map listaContenuti = {};
-            String? nomeContenuto = contenuto.querySelector("h4")?.text;
+              listaContenuti["nome"] = nomeContenuto;
+              listaContenuti["piatti"] = [];
 
-            listaContenuti["nome"] = nomeContenuto;
-            listaContenuti["piatti"] = [];
+              contenuto
+                  .querySelectorAll(
+                      "div[class^='w3-text'], div[class*='w3-text'] > div.node--type-ricetta")
+                  .forEach((ricetta) {
+                Map piatto = {};
+                piatto["nome"] = ricetta.querySelector("h4")?.text;
+                piatto["ingredienti"] = [];
+                ricetta.querySelectorAll("h6").forEach((h6) {
+                  piatto["ingredienti"]
+                      .add(h6.text.replaceAll(" X", "").trim());
+                });
 
-            contenuto.querySelectorAll("div[class^='w3-text'], div[class*='w3-text'] > div.node--type-ricetta").forEach((ricetta) {
+                listaContenuti["piatti"].add(piatto);
+              });
 
-              Map piatto = {};
-              piatto["nome"] = ricetta.querySelector("h4")?.text;
-              piatto["ingredienti"] = [];
-              ricetta.querySelectorAll("h6").forEach((h6) { piatto["ingredienti"].add(h6.text.replaceAll(" X", "").trim());});
-
-              listaContenuti["piatti"].add(piatto);
+              nuovoMenu["contenuti"].add(listaContenuti);
             });
 
-            nuovoMenu["contenuti"].add(listaContenuti);
-
+            listaMenu.add(nuovoMenu);
           });
-          
-          
-          
-          listaMenu.add(nuovoMenu);
-        });
-        mense.add({"nome" : nomeMensa, "orario": orario, "menu" : listaMenu, "servizio" : servizio, "gestore" : gestore});
+          mense.add({
+            "nome": nomeMensa,
+            "orario": orario,
+            "menu": listaMenu,
+            "servizio": servizio,
+            "gestore": gestore
+          });
 
-        /*Widget scheda = Padding(
+          /*Widget scheda = Padding(
           padding: const EdgeInsets.all(8.0),
           child: OpenContainer(
             tappable: servizio == "Servizio Regolare",
@@ -180,21 +194,24 @@ class _MyHomePageState extends State<MyHomePage>
         );
 
         finale.add(scheda);*/
-      });
+        });
 
-      setState(() {
-        // print(finale);
-        listaMense = mense;
+        if(mounted){
+          setState(() {
+            // print(finale);
+            listaMense = mense;
+          });
+        }
+        //var doc = jsonDecode(value)[3].data
       });
-      //var doc = jsonDecode(value)[3].data
     });
   }
 
   @override
   void initState() {
     // print("creo lo stato");
-    listaMense = [
-    ];
+
+    listaMense = [];
     ottieni();
     super.initState();
   }
@@ -208,41 +225,51 @@ class _MyHomePageState extends State<MyHomePage>
         // the App.build method, and use it to set our appbar title.
         title: const Text("Mense ADISU"),
       ),
-      body: listaMense.isNotEmpty ? Scrollbar(
-        child: Center(
-            // Center is a layout widget. It takes a single child and positions it
-            // in the middle of the parent.
-            child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ListView(
-            children: [
-              for(final mensa in listaMense)
-                Scheda(listaMenu: mensa["menu"], orario: mensa["orario"],nomeMensa: mensa["nome"], gestore: mensa["gestore"], servizio: mensa["servizio"],),
-            ],
-
-          ),
-        )),
-      ) : const LinearProgressIndicator(color: Colors.amber,),
+      body: listaMense.isNotEmpty
+          ? Scrollbar(
+              child: Center(
+                  // Center is a layout widget. It takes a single child and positions it
+                  // in the middle of the parent.
+                  child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ListView(
+                  children: [
+                    for (final mensa in listaMense)
+                      Scheda(
+                        listaMenu: mensa["menu"],
+                        orario: mensa["orario"],
+                        nomeMensa: mensa["nome"],
+                        gestore: mensa["gestore"],
+                        servizio: mensa["servizio"],
+                      ),
+                  ],
+                ),
+              )),
+            )
+          : const LinearProgressIndicator(
+              color: Colors.amber,
+            ),
     );
   }
-
-
 }
 
-class Scheda extends StatelessWidget{
+class Scheda extends StatelessWidget {
   final String? servizio;
   final String? nomeMensa;
   final List<Map?> listaMenu;
   final String? orario;
   final String? gestore;
-  const Scheda({Key? key, this.servizio, this.nomeMensa, required this.listaMenu, this.orario, this.gestore}) : super(key: key);
+  const Scheda(
+      {Key? key,
+      this.servizio,
+      this.nomeMensa,
+      required this.listaMenu,
+      this.orario,
+      this.gestore})
+      : super(key: key);
 
-  
-  
-  
   @override
   Widget build(BuildContext context) {
-    
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: OpenContainer(
@@ -256,21 +283,30 @@ class Scheda extends StatelessWidget{
             orario: orario,
           );
         },
-
         closedBuilder: (BuildContext context, void Function() action) {
           return SizedBox(
             height: 100,
             child: Container(
-              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: servizio == "Servizio Regolare" ? Colors.amber : Colors.transparent, width: 2))),
+              decoration: BoxDecoration(
+                  border: Border(
+                      bottom: BorderSide(
+                          color: servizio == "Servizio Regolare"
+                              ? Colors.amber
+                              : Colors.transparent,
+                          width: 2))),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(nomeMensa!, textScaleFactor: 1.5, style: TextStyle(color: servizio == "Servizio Regolare" ? Colors.amber : Colors.black)),
+                    Text(nomeMensa!,
+                        textScaleFactor: 1.5,
+                        style: TextStyle(
+                            color: servizio == "Servizio Regolare"
+                                ? Colors.amber
+                                : Colors.black)),
                     Text((gestore != null ? "Gestita da: $gestore" : "")),
-
                   ],
                 ),
               ),
@@ -280,5 +316,4 @@ class Scheda extends StatelessWidget{
       ),
     );
   }
-  
 }
