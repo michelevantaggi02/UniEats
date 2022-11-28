@@ -61,10 +61,18 @@ class _MyHomePageState extends State<MyHomePage>
             'https://intrastudents.adisu.umbria.it/prenotazioni-mensa?_wrapper_format=drupal_ajax'),
         headers: {"Cookie": biscotti});
 
-    List<Widget> finale = [];
-    List<dynamic> mense = [];
 
+    List<dynamic> mense = [];
     risposta.then((Response value) {
+      if(value.statusCode != 200){
+        CookieManager.instance().deleteAllCookies();
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const LoginPage()),
+              (Route<dynamic> route) => false,
+        );
+      }
       String stringa = jsonDecode(value.body)[3]["data"];
       //print(stringa);
       var base = parse(stringa);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'main.dart';
@@ -39,9 +40,11 @@ class LoginState extends State<LoginPage> {
         });
         this.controller = controller;
       },
-      onLoadStart: (InAppWebViewController controller, url) {
+      onLoadStart: (InAppWebViewController controller, url) async {
         //print(url);
-        if(url.toString() == "https://intrastudents.adisu.umbria.it/intrastudents?check_logged_in=1"){
+        CookieManager manager = CookieManager.instance();
+        if(url.toString() == "https://intrastudents.adisu.umbria.it/intrastudents?check_logged_in=1" || (await manager.getCookies(
+        url: Uri.parse("https://intrastudents.adisu.umbria.it"))).length == 3){
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
@@ -83,8 +86,8 @@ class LoginState extends State<LoginPage> {
         """);
 
       } : null,
-      child: const Text("Log In"),
       style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+      child: const Text("Log In"),
     );
 
     return Scaffold(
@@ -104,9 +107,11 @@ class LoginState extends State<LoginPage> {
                       labelText: "Email",
                       icon: Icon(Icons.email),
 
-                    ),
 
+                    ),
+                    autofillHints: const [AutofillHints.email],
                     controller: email,
+                    keyboardType: TextInputType.emailAddress,
 
                   ),
                 ),
@@ -126,6 +131,8 @@ class LoginState extends State<LoginPage> {
                       return null;
                     },
                     controller: password,
+                    autofillHints: const [AutofillHints.password],
+                    onEditingComplete: () => TextInput.finishAutofillContext(),
                   ),
                 ),
                 Container(
