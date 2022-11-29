@@ -167,10 +167,11 @@ class _MyHomePageState extends State<MyHomePage>
 
           contenuto
               .querySelectorAll(
-                  "div[class^='w3-text'], div[class*='w3-text'] > div.node--type-ricetta")
+                  "div[class^='w3-text'] > div.node--type-ricetta, div[class*='w3-text'] > div.node--type-ricetta")
               .forEach((ricetta) {
             Map piatto = {};
             piatto["nome"] = ricetta.querySelector("h4")?.text;
+            //print(ricetta.innerHtml);
             piatto["ingredienti"] = [];
             ricetta.querySelectorAll("h6").forEach((h6) {
               piatto["ingredienti"].add(h6.text.replaceAll(" X", "").trim());
