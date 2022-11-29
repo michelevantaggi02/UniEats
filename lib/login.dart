@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 
 
@@ -29,9 +29,21 @@ class LoginState extends State<LoginPage> {
     final CookieManager manager = CookieManager.instance();
     //print("controllo i cookie");
     List<Cookie> cook = await manager.getCookies(url: Uri.parse("https://intrastudents.adisu.umbria.it"));
+
     int lun = cook.length;
     //print(cook.length);
     if(lun == 3){
+
+      List<String> indici = [];
+      SharedPreferences sp = await SharedPreferences.getInstance();
+      for(final c in cook){
+        //print(c.name);
+        indici.add(c.name);
+
+          sp.setString(c.name, c.value);
+      }
+      sp.setStringList("biscotti", indici);
+
       vaiHome();
     }
   }
@@ -55,7 +67,8 @@ class LoginState extends State<LoginPage> {
 
 
         if(url.toString() == "https://intrastudents.adisu.umbria.it/intrastudents?check_logged_in=1"){
-          vaiHome();
+
+          controllaCookie();
         }
       }
     );
