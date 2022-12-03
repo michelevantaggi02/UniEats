@@ -6,6 +6,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart';
 import "package:html/parser.dart";
 import 'package:mensa_adisu/container_aperto.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,11 +52,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool validCookie = cookies.length == 3;
+
     //print(validCookie);
     return MaterialApp(
       title: 'App Mensa',
       theme: ThemeData(primarySwatch: Colors.amber),
-      darkTheme: ThemeData.dark(),
+      darkTheme: ThemeData(
+          brightness: Brightness.dark,
+          primarySwatch: Colors.amber,
+          indicatorColor: Colors.amber,
+          primaryColor: Colors.amber),
       home: validCookie ? const MyHomePage() : const LoginPage(),
     );
   }
@@ -72,41 +79,41 @@ class _MyHomePageState extends State<MyHomePage>
   List<dynamic> listaMense = [];
 
   void ottieni() {
-
-
     // print("inizio la richiesta delle mense");
     if (info == "") {
-      checkCookies().then((value){
+      checkCookies().then((value) {
         String biscotti = "";
 
         for (var element in cookies) {
           biscotti += element.name + "=" + element.value + "; ";
         }
-      var risposta = get(
-          Uri.parse(
-              'https://intrastudents.adisu.umbria.it/prenotazioni-mensa?_wrapper_format=drupal_ajax'),
-          headers: {"Cookie": biscotti});
-      risposta.then((Response value) {
-        if (value.statusCode != 200) {
-          CookieManager.instance().deleteAllCookies();
-          SharedPreferences.getInstance().then((value) => value.clear());
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-            (Route<dynamic> route) => false,
-          );
-        }
-        info = jsonDecode(value.body)[3]["data"];
-        SharedPreferences.getInstance().then((value) {
-          //print("salvo le info");
-          value.setString("body", info);
+        var risposta = get(
+            Uri.parse(
+                'https://intrastudents.adisu.umbria.it/prenotazioni-mensa?_wrapper_format=drupal_ajax'),
+            headers: {"Cookie": biscotti});
+        risposta.then((Response value) {
+          if (value.statusCode != 200) {
+            CookieManager.instance().deleteAllCookies();
+            SharedPreferences.getInstance().then((value) => value.clear());
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+              (Route<dynamic> route) => false,
+            );
+          }
+          info = jsonDecode(value.body)[3]["data"];
+          SharedPreferences.getInstance().then((value) {
+            //print("salvo le info");
+            value.setString("body", info);
 
-          value.setInt("bodydate",
-              DateTime.now().add(const Duration(hours: 6)).millisecondsSinceEpoch);
-
+            value.setInt(
+                "bodydate",
+                DateTime.now()
+                    .add(const Duration(hours: 6))
+                    .millisecondsSinceEpoch);
+          });
+          valuta();
         });
-        valuta();
-      });
       });
     } else {
       valuta();
@@ -117,8 +124,9 @@ class _MyHomePageState extends State<MyHomePage>
     List<dynamic> mense = [];
 
     //print(stringa);
-    var base = parse(info);
+    final base = parse(info);
 
+    //controllo ogni menu
     base
         .querySelectorAll("div.flex-container > div[style=\"flex-grow: 1\"]")
         .forEach((element) {
@@ -142,7 +150,7 @@ class _MyHomePageState extends State<MyHomePage>
       for (int i = 0; i < min(giorni!.length, ore!.length); i++) {
         orario += giorni[i].text + "" + ore[i].text + "\n";
       }
-      var menu = element.querySelector(".w3-modal");
+      final menu = element.querySelector(".w3-modal");
 
       List<Map?> listaMenu = [];
 
@@ -177,6 +185,17 @@ class _MyHomePageState extends State<MyHomePage>
               piatto["ingredienti"].add(h6.text.replaceAll(" X", "").trim());
             });
 
+            piatto["mucca"] =
+                ricetta.querySelector("img[src *= 'no-cow']") == null;
+            piatto["glutine"] =
+                ricetta.querySelector("img[src *= 'no-gluten']") == null;
+            piatto["vegano"] =
+                ricetta.querySelector("img[src *= 'vegan']") != null;
+            piatto["maiale"] =
+                ricetta.querySelector("img[src *= 'no-pig']") == null;
+            piatto["vegetariano"] =
+                ricetta.querySelector("img[src *= 'vegetarian']") != null;
+
             listaContenuti["piatti"].add(piatto);
           });
 
@@ -202,10 +221,52 @@ class _MyHomePageState extends State<MyHomePage>
     }
   }
 
+  void controllaVersione() async {
+    get(Uri.parse(
+            "https://api.github.com/repos/michelevantaggi02/mensa_adisu/releases/latest"))
+        .then((value) {
+      final doc = jsonDecode(value.body);
+      int ver =
+          int.parse(doc["tag_name"].replaceAll(".", "").replaceAll("v", ""));
+      PackageInfo.fromPlatform().then((value2) {
+        //print(ver);
+        int localVer = int.parse(value2.version.replaceAll(".", ""));
+        if (localVer < ver) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await showDialog<String>(
+              context: context,
+              builder: (BuildContext context) => AlertDialog(
+                title: Text("Nuova Versione Disponibile (${doc["tag_name"]})!"),
+                //content: const Text("Message"),
+                actions: <Widget>[
+                  TextButton(onPressed: () {
+                    canLaunchUrlString(doc["html_url"]).then((can){
+                      if(can) {
+                        launchUrlString(doc["html_url"], mode: LaunchMode.externalApplication);
+                      }
+                    });
+                    Navigator.of(context).pop();
+                  }, child: const Text("Scarica")),
+                  TextButton(
+                    child: const Text("Non ora"),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
+            );
+          });
+        }
+        //print(localVer < ver);
+      });
+    });
+  }
+
   @override
   void initState() {
     // print("creo lo stato");
-
+    controllaVersione();
     listaMense = [];
     ottieni();
     super.initState();
@@ -269,7 +330,8 @@ class Scheda extends StatelessWidget {
       padding: const EdgeInsets.all(8.0),
       child: OpenContainer(
         tappable: servizio == "Servizio Regolare",
-        closedColor: Colors.transparent,
+        closedColor: Theme.of(context).cardColor,
+        closedElevation: servizio == "Servizio Regolare" ? 10 : 0,
         openBuilder: (BuildContext context,
             void Function({Object? returnValue}) action) {
           return ContainerAperto(
@@ -286,7 +348,7 @@ class Scheda extends StatelessWidget {
                   border: Border(
                       bottom: BorderSide(
                           color: servizio == "Servizio Regolare"
-                              ? Colors.amber
+                              ? Theme.of(context).primaryColor
                               : Colors.transparent,
                           width: 2))),
               child: Padding(
@@ -299,7 +361,7 @@ class Scheda extends StatelessWidget {
                         textScaleFactor: 1.5,
                         style: TextStyle(
                             color: servizio == "Servizio Regolare"
-                                ? Colors.amber
+                                ? Theme.of(context).textTheme.button?.color
                                 : Colors.black)),
                     Text((gestore != null ? "Gestita da: $gestore" : "")),
                   ],

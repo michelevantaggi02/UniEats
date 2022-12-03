@@ -113,7 +113,7 @@ class LoginState extends State<LoginPage> {
         """);
 
       } : null,
-      style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+      //style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
       child: const Text("Log In"),
     );
 
@@ -122,54 +122,57 @@ class LoginState extends State<LoginPage> {
         title: const Text("Login"),
         centerTitle: true,
       ),
-      body: Center(
-        child: Form(
-            child: Column(
-              children: [
-                SizedBox(
-                  width: 500,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Form(
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: 500,
 
-                  child: TextFormField(
-                    decoration: const InputDecoration(
-                      labelText: "Email",
-                      icon: Icon(Icons.email),
+                    child: TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: "Email",
+                        icon: Icon(Icons.email),
 
+
+                      ),
+                      autofillHints: const [AutofillHints.email],
+                      controller: email,
+                      keyboardType: TextInputType.emailAddress,
 
                     ),
-                    autofillHints: const [AutofillHints.email],
-                    controller: email,
-                    keyboardType: TextInputType.emailAddress,
-
                   ),
-                ),
 
-                SizedBox(
-                  width: 500,
-                  child: TextFormField(
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: "Password",
-                      icon: Icon(Icons.password),
+                  SizedBox(
+                    width: 500,
+                    child: TextFormField(
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: "Password",
+                        icon: Icon(Icons.password),
+                      ),
+                      validator: (String? val) {
+                        if (val == null || val.isEmpty) {
+                          return "Insert valid password";
+                        }
+                        return null;
+                      },
+                      controller: password,
+                      autofillHints: const [AutofillHints.password],
+                      onEditingComplete: () => TextInput.finishAutofillContext(),
                     ),
-                    validator: (String? val) {
-                      if (val == null || val.isEmpty) {
-                        return "Insert valid password";
-                      }
-                      return null;
-                    },
-                    controller: password,
-                    autofillHints: const [AutofillHints.password],
-                    onEditingComplete: () => TextInput.finishAutofillContext(),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: buttonLogin,
-                ),
-                const Text("Se hai già eseguito il login, chiudi e riapri la app.\n Se questa schermata ricompare rieseguire il login", style: TextStyle(color: Colors.amber), textAlign: TextAlign.center,),
-              ],
-            )),
-        ),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: buttonLogin,
+                  ),
+                  //const Text("Se hai già eseguito il login, chiudi e riapri la app.\n Se questa schermata ricompare rieseguire il login", style: TextStyle(color: Colors.amber), textAlign: TextAlign.center,),
+                ],
+              )),
+          ),
+      ),
 
     );
   }
