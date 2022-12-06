@@ -6,6 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart';
 import "package:html/parser.dart";
 import 'package:mensa_adisu/container_aperto.dart';
+import 'package:mensa_adisu/settings.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'login.dart';
@@ -13,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await checkCookies();
+  await checkPrefs();
   // print(valid_cookie);
   runApp(const MyApp());
 }
@@ -21,7 +22,10 @@ void main() async {
 List cookies = [];
 String info = "";
 
-Future<int> checkCookies() async {
+MaterialColor base = Colors.amber;
+ThemeSettings ts = ThemeSettings();
+
+Future<int> checkPrefs() async {
   /*final CookieManager manager = CookieManager.instance();
   cookies = await manager.getCookies(
       url: Uri.parse("https://intrastudents.adisu.umbria.it"));*/
@@ -41,9 +45,12 @@ Future<int> checkCookies() async {
     info = sp.getString("body") ?? "";
   }
 
+  base = Colors.primaries[sp.getInt("colore") ?? 13];
+
   //print(cookies);
   return 0;
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -54,20 +61,25 @@ class MyApp extends StatelessWidget {
     bool validCookie = cookies.length == 3;
 
     //print(validCookie);
-    return MaterialApp(
-      title: 'App Mensa',
-      theme: ThemeData(primarySwatch: Colors.amber),
-      darkTheme: ThemeData(
-          brightness: Brightness.dark,
-          primarySwatch: Colors.amber,
-          indicatorColor: Colors.amber,
-          primaryColor: Colors.amber),
-      home: validCookie ? const MyHomePage() : const LoginPage(),
+    return AnimatedBuilder(
+      animation: ts,
+      builder: (context, child) => MaterialApp(
+        title: 'App Mensa',
+        theme: ThemeData(primarySwatch: base),
+        darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: base,
+            indicatorColor: base,
+            primaryColor: base,
+            checkboxTheme: CheckboxThemeData(fillColor: MaterialStatePropertyAll(base))),
+        home: validCookie ? const MyHomePage() : const LoginPage(),
+      ),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
+
   const MyHomePage({Key? key}) : super(key: key);
 
   @override
@@ -81,7 +93,7 @@ class _MyHomePageState extends State<MyHomePage>
   void ottieni() {
     // print("inizio la richiesta delle mense");
     if (info == "") {
-      checkCookies().then((value) {
+      checkPrefs().then((value) {
         String biscotti = "";
 
         for (var element in cookies) {
@@ -239,14 +251,17 @@ class _MyHomePageState extends State<MyHomePage>
                 title: Text("Nuova Versione Disponibile (${doc["tag_name"]})!"),
                 //content: const Text("Message"),
                 actions: <Widget>[
-                  TextButton(onPressed: () {
-                    canLaunchUrlString(doc["html_url"]).then((can){
-                      if(can) {
-                        launchUrlString(doc["html_url"], mode: LaunchMode.externalApplication);
-                      }
-                    });
-                    Navigator.of(context).pop();
-                  }, child: const Text("Scarica")),
+                  TextButton(
+                      onPressed: () {
+                        canLaunchUrlString(doc["html_url"]).then((can) {
+                          if (can) {
+                            launchUrlString(doc["html_url"],
+                                mode: LaunchMode.externalApplication);
+                          }
+                        });
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text("Scarica")),
                   TextButton(
                     child: const Text("Non ora"),
                     onPressed: () {
@@ -274,12 +289,23 @@ class _MyHomePageState extends State<MyHomePage>
 
   @override
   Widget build(BuildContext context) {
+    
     // print("creo i widget");
     return Scaffold(
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: const Text("Mense ADISU"),
+        actions: [
+          IconButton(
+              onPressed: () async {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => Settings()));
+                //print(col);
+                //ts.setTheme(col);
+              },
+              icon: const Icon(Icons.settings))
+        ],
       ),
       body: listaMense.isNotEmpty
           ? Scrollbar(
@@ -329,6 +355,7 @@ class Scheda extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: OpenContainer(
+
         tappable: servizio == "Servizio Regolare",
         closedColor: Theme.of(context).cardColor,
         closedElevation: servizio == "Servizio Regolare" ? 10 : 0,
@@ -372,5 +399,24 @@ class Scheda extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class ThemeSettings extends ChangeNotifier {
+  int theme = 13;
+  int get getIndex => theme;
+  ThemeMode tm = ThemeMode.system;
+  ThemeMode get getThemeMode => tm;
+
+  void setTheme(int theme) {
+    this.theme = theme;
+    base = Colors.primaries[theme];
+    SharedPreferences.getInstance().then((value) => value.setInt("colore", theme));
+    notifyListeners();
+  }
+
+
+  void notifyListeners() {
+    super.notifyListeners();
   }
 }
