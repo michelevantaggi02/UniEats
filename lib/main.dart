@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:http/http.dart';
@@ -51,7 +50,6 @@ Future<int> checkPrefs() async {
   return 0;
 }
 
-
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
@@ -71,7 +69,8 @@ class MyApp extends StatelessWidget {
             primarySwatch: base,
             indicatorColor: base,
             primaryColor: base,
-            checkboxTheme: CheckboxThemeData(fillColor: MaterialStatePropertyAll(base))),
+            checkboxTheme:
+                CheckboxThemeData(fillColor: MaterialStatePropertyAll(base))),
         home: validCookie ? const MyHomePage() : const LoginPage(),
       ),
     );
@@ -79,7 +78,6 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-
   const MyHomePage({Key? key}) : super(key: key);
 
   @override
@@ -91,9 +89,9 @@ class _MyHomePageState extends State<MyHomePage>
   List<dynamic> listaMense = [];
 
   void ottieni() {
-    // print("inizio la richiesta delle mense");
-    if (info == "") {
-      checkPrefs().then((value) {
+     //print("inizio la richiesta delle mense");
+
+      checkPrefs().then((v) {
         String biscotti = "";
 
         for (var element in cookies) {
@@ -127,9 +125,7 @@ class _MyHomePageState extends State<MyHomePage>
           valuta();
         });
       });
-    } else {
-      valuta();
-    }
+    valuta();
   }
 
   void valuta() {
@@ -289,7 +285,6 @@ class _MyHomePageState extends State<MyHomePage>
 
   @override
   Widget build(BuildContext context) {
-    
     // print("creo i widget");
     return Scaffold(
       appBar: AppBar(
@@ -309,24 +304,29 @@ class _MyHomePageState extends State<MyHomePage>
       ),
       body: listaMense.isNotEmpty
           ? Scrollbar(
-              child: Center(
-                  // Center is a layout widget. It takes a single child and positions it
-                  // in the middle of the parent.
-                  child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ListView(
-                  children: [
-                    for (final mensa in listaMense)
-                      Scheda(
-                        listaMenu: mensa["menu"],
-                        orario: mensa["orario"],
-                        nomeMensa: mensa["nome"],
-                        gestore: mensa["gestore"],
-                        servizio: mensa["servizio"],
-                      ),
-                  ],
-                ),
-              )),
+              child: RefreshIndicator(
+                onRefresh: () async{
+                  return ottieni();
+                },
+                child: Center(
+                    // Center is a layout widget. It takes a single child and positions it
+                    // in the middle of the parent.
+                    child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ListView(
+                    children: [
+                      for (final mensa in listaMense)
+                        Scheda(
+                          listaMenu: mensa["menu"],
+                          orario: mensa["orario"],
+                          nomeMensa: mensa["nome"],
+                          gestore: mensa["gestore"],
+                          servizio: mensa["servizio"],
+                        ),
+                    ],
+                  ),
+                )),
+              ),
             )
           : const LinearProgressIndicator(
               color: Colors.amber,
@@ -354,38 +354,29 @@ class Scheda extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: OpenContainer(
-
-        tappable: servizio == "Servizio Regolare",
-        closedColor: Theme.of(context).cardColor,
-        closedElevation: servizio == "Servizio Regolare" ? 10 : 0,
-        openBuilder: (BuildContext context,
-            void Function({Object? returnValue}) action) {
-          return ContainerAperto(
-            nomeMensa: nomeMensa,
-            listaMenu: listaMenu,
-            orario: orario,
-          );
-        },
-        closedBuilder: (BuildContext context, void Function() action) {
-          return SizedBox(
-            height: 100,
-            child: Container(
-              decoration: BoxDecoration(
-                  border: Border(
-                      bottom: BorderSide(
-                          color: servizio == "Servizio Regolare"
-                              ? Theme.of(context).primaryColor
-                              : Colors.transparent,
-                          width: 2))),
-              child: Padding(
+      child: SizedBox(
+        height: 100,
+        child: Container(
+          decoration: BoxDecoration(
+                border: Border(
+                    bottom: BorderSide(
+                        color: servizio == "Servizio Regolare"
+                            ? Theme.of(context).primaryColor
+                            : Colors.transparent,
+                        width: 2))),
+          child: ElevatedButton(
+            style: ButtonStyle(elevation: MaterialStatePropertyAll(servizio == "Servizio Regolare" ? 10.0 : 0), backgroundColor: MaterialStatePropertyAll(Theme.of(context).cardColor)),
+            onPressed:servizio == "Servizio Regolare"? () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ContainerAperto(nomeMensa: nomeMensa, listaMenu: listaMenu),));
+              }: null,
+            child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(nomeMensa!,
-                        textScaleFactor: 1.5,
+                        textScaleFactor: 1.4,
                         style: TextStyle(
                             color: servizio == "Servizio Regolare"
                                 ? Theme.of(context).textTheme.button?.color
@@ -394,9 +385,8 @@ class Scheda extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -411,10 +401,10 @@ class ThemeSettings extends ChangeNotifier {
   void setTheme(int theme) {
     this.theme = theme;
     base = Colors.primaries[theme];
-    SharedPreferences.getInstance().then((value) => value.setInt("colore", theme));
+    SharedPreferences.getInstance()
+        .then((value) => value.setInt("colore", theme));
     notifyListeners();
   }
-
 
   void notifyListeners() {
     super.notifyListeners();
