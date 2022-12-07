@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mensa_adisu/main.dart';
 
 class ContainerAperto extends StatefulWidget {
   final String? nomeMensa;
@@ -23,7 +24,7 @@ Map<String, bool> filtroPiatti = {
 
 class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
   final String? nomeMensa;
-  final List<Map?> listaMenu;
+  List<Map?> listaMenu;
   final String? orario;
   TabController? controller;
   int sceltaOrario = 0;
@@ -113,48 +114,60 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
               children: [
                 for (final tab in listaMenu[sceltaOrario]!["contenuti"])
                   tab["piatti"]?.isNotEmpty
-                      ? ListView(
-                          children: [
-                            for (final tab2 in tab["piatti"].reversed)
-                              if (filtroPiatti.entries
-                                  .map((element) {
-                                    //print("${tab2["nome"]}-${element.key}:${element.value || (element.value == tab2[element.key])}");
-                                    return tab2[element.key] == false ||
-                                        element.value == tab2[element.key];
-                                  })
-                                  .toList()
-                                  .every((element) => element == true))
-                                ListTile(
-                                  trailing: tab2["ingredienti"].isNotEmpty
-                                      ? IconButton(
-                                          onPressed: () => showDialog(
-                                                context: context,
-                                                builder:
-                                                    (BuildContext context) =>
-                                                        AlertDialog(
-                                                  title: Text(
-                                                      "Ingredienti ${tab2["nome"].toLowerCase()}"),
-                                                  content: Text(
-                                                      tab2["ingredienti"]
-                                                          .join("\n")),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                              context, 'OK'),
-                                                      child: const Text('OK'),
-                                                    )
-                                                  ],
+                      ? RefreshIndicator(
+                        onRefresh: () async{
+                          List mense = await memoryController.aggiornaInfo();
+                          print(mense.firstWhere((element) => element["nome"] == nomeMensa));
+                          if(mounted){
+                            setState(() {
+
+                              listaMenu = mense.firstWhere((element) => element["nome"] == nomeMensa)["menu"];
+                            });
+                          }
+                        },
+                        child: ListView(
+                            children: [
+                              for (final tab2 in tab["piatti"].reversed)
+                                if (filtroPiatti.entries
+                                    .map((element) {
+                                      //print("${tab2["nome"]}-${element.key}:${element.value || (element.value == tab2[element.key])}");
+                                      return tab2[element.key] == false ||
+                                          element.value == tab2[element.key];
+                                    })
+                                    .toList()
+                                    .every((element) => element == true))
+                                  ListTile(
+                                    trailing: tab2["ingredienti"].isNotEmpty
+                                        ? IconButton(
+                                            onPressed: () => showDialog(
+                                                  context: context,
+                                                  builder:
+                                                      (BuildContext context) =>
+                                                          AlertDialog(
+                                                    title: Text(
+                                                        "Ingredienti ${tab2["nome"].toLowerCase()}"),
+                                                    content: Text(
+                                                        tab2["ingredienti"]
+                                                            .join("\n")),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                                context, 'OK'),
+                                                        child: const Text('OK'),
+                                                      )
+                                                    ],
+                                                  ),
                                                 ),
-                                              ),
-                                          icon: const Icon(Icons.info_outline))
-                                      : null,
-                                  title: Text(tab2["nome"].toLowerCase()),
+                                            icon: const Icon(Icons.info_outline))
+                                        : null,
+                                    title: Text(tab2["nome"].toLowerCase()),
 
-                                )
-                          ],
+                                  )
+                            ],
 
-                        )
+                          ),
+                      )
                       : noInfo,
               ],
             )

@@ -22,8 +22,8 @@ class SettingsState extends  State<Settings>{
       body: Center(
         child: ListView(
           children: [
-            ListTile(title: const Text("Colore principale"), trailing: IconButton(icon: Icon(Icons.circle, color: Colors.primaries[ts.getIndex],), onPressed: () {
-              showDialog(context: context, builder: (context) => AlertDialog(
+            ListTile(
+              onTap: () => showDialog(context: context, builder: (context) => AlertDialog(
                 title: const Text("Scegli il colore principale"),
                 content: MaterialColorPicker(
                   allowShades: false,
@@ -36,8 +36,8 @@ class SettingsState extends  State<Settings>{
                 actions: [
                   TextButton(onPressed: ()=>Navigator.pop(context, "OK"), child: const Text("OK"))
                 ],
-              ),);
-            },),)
+              ),),
+              title: const Text("Colore principale"), trailing: Icon(Icons.circle, color: Colors.primaries[ts.getIndex]),)
           ],
         ),
       ),
