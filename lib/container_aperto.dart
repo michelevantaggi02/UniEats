@@ -1,5 +1,11 @@
+import 'dart:convert';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:mensa_adisu/main.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:http/http.dart';
+
+import 'memory_controller.dart';
 
 class ContainerAperto extends StatefulWidget {
   final String? nomeMensa;
@@ -25,15 +31,23 @@ Map<String, bool> filtroPiatti = {
 class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
   final String? nomeMensa;
   List<Map?> listaMenu;
+  Map<String, String> listaImmagini = {};
   final String? orario;
   TabController? controller;
   int sceltaOrario = 0;
-   int sceltaPasto = 0;
+  int sceltaPasto = 0;
+  final double _imgSize = 50;
+
+  SettingsController sc = SettingsController();
 
   StatoAperto(this.nomeMensa, this.listaMenu, this.orario);
 
   @override
   void initState() {
+    if(sc.showImages){
+      getImgSrc();
+    }
+    //print(orario);
     //print(orario?.trim());
     //print(orario?.trim().split(RegExp(r"\s+")).join(" "));
     super.initState();
@@ -41,13 +55,19 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+
+      controller?.animateTo(sceltaPasto);
+
     if (listaMenu.isNotEmpty &&
         listaMenu[sceltaOrario]?["contenuti"]?.isNotEmpty) {
       controller = TabController(
           length: listaMenu[sceltaOrario]?["contenuti"].length,
           vsync: this,
-          initialIndex: sceltaPasto);
+          initialIndex: sceltaPasto
+      );
+      controller?.addListener(() {sceltaPasto = controller?.index ?? 0;});
     }
+    
 
     Center noInfo = Center(
       child: Column(
@@ -72,7 +92,8 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                 ],
                 controller: controller,
                 labelColor: Theme.of(context).textTheme.bodyText2?.color,
-                labelPadding:const EdgeInsets.symmetric(horizontal: 5),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 5),
+
                 //indicatorColor: Theme.of(context).indicatorColor,
               )
             : null,
@@ -115,17 +136,18 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                 for (final tab in listaMenu[sceltaOrario]!["contenuti"])
                   tab["piatti"]?.isNotEmpty
                       ? RefreshIndicator(
-                        onRefresh: () async{
-                          List mense = await memoryController.aggiornaInfo();
-                          print(mense.firstWhere((element) => element["nome"] == nomeMensa));
-                          if(mounted){
-                            setState(() {
-
-                              listaMenu = mense.firstWhere((element) => element["nome"] == nomeMensa)["menu"];
-                            });
-                          }
-                        },
-                        child: ListView(
+                          onRefresh: () async {
+                            List mense = await memoryController.aggiornaInfo();
+                            //print(mense.firstWhere((element) => element["nome"] == nomeMensa));
+                            if (mounted) {
+                              setState(() {
+                                listaMenu = mense.firstWhere((element) =>
+                                    element["nome"] == nomeMensa)["menu"];
+                              });
+                            }
+                          },
+                          child: ListView(
+                            padding: const EdgeInsets.all(4.0),
                             children: [
                               for (final tab2 in tab["piatti"].reversed)
                                 if (filtroPiatti.entries
@@ -137,6 +159,27 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                                     .toList()
                                     .every((element) => element == true))
                                   ListTile(
+                                    minVerticalPadding: 4.0,
+
+                                    leading: sc.showImages && listaImmagini.containsKey(
+                                            tab2["nome"].toLowerCase())
+                                        ? CachedNetworkImage(
+                                            imageUrl: listaImmagini[tab2["nome"]
+                                                    .toLowerCase()] ??
+                                                "",
+                                            progressIndicatorBuilder: (context,
+                                                    url, progress) =>
+                                                CircularProgressIndicator(
+                                                    value: progress
+                                                                .downloaded /
+                                                        (progress.totalSize ??
+                                                            1)),
+                                            height: _imgSize,
+                                            width: _imgSize,
+                                            fit: BoxFit.cover,
+                                      cacheManager: DefaultCacheManager(),
+                                          )
+                                        : null,
                                     trailing: tab2["ingredienti"].isNotEmpty
                                         ? IconButton(
                                             onPressed: () => showDialog(
@@ -159,17 +202,18 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                                                     ],
                                                   ),
                                                 ),
-                                            icon: const Icon(Icons.info_outline))
+                                            icon:
+                                                const Icon(Icons.info_outline))
                                         : null,
                                     title: Text(tab2["nome"].toLowerCase()),
-
+                                    //shape: Border(bottom: BorderSide(color: Theme.of(context).primaryColor)),
                                   )
                             ],
-
                           ),
-                      )
+                        )
                       : noInfo,
               ],
+        
             )
           : noInfo,
       bottomNavigationBar: listaMenu.length >= 2
@@ -192,6 +236,7 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                     controller = null;
                   }
                   sceltaOrario = i;
+                  getImgSrc();
                 });
               },
               showUnselectedLabels: true,
@@ -201,6 +246,56 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
             )
           : null,
     );
+  }
+
+  void getImgSrc() async {
+    if(listaMenu.isNotEmpty){
+      for (final cont in listaMenu[sceltaOrario]?["contenuti"]) {
+        for (final piatto in cont["piatti"]) {
+          if (!mounted) {
+            return;
+          }
+          String? nome = piatto["nome"].toLowerCase();
+          if (!listaImmagini.containsKey(nome)) {
+            //print(nome);
+
+            String response = "";
+            FileInfo? cached =
+                await DefaultCacheManager().getFileFromCache(nome ?? "");
+            if (cached != null) {
+              response = cached.file.readAsStringSync();
+            } else {
+              await Future.delayed(const Duration(seconds: 1));
+              Response r = await get(
+                  Uri.parse(
+                      "https://api.pexels.com/v1/search?query=$nome&per_page=1&locale=it-IT"),
+                  headers: {
+                    "Authorization":
+                        "563492ad6f917000010000012a34583236804f59a9a56097bc8cdf38",
+                  });
+              if (r.statusCode == 200) {
+                await DefaultCacheManager().putFile(
+                  nome ?? "",
+                  r.bodyBytes,
+                  key: nome,
+                  maxAge: const Duration(days: 1000),
+                  eTag: nome,
+                );
+                response = r.body;
+              }
+            }
+
+            var body = jsonDecode(response);
+            if (mounted && body["error"] == null) {
+              setState(() {
+                listaImmagini[nome!] = body["photos"]?[0]?["src"]?["small"];
+                //print(listaImmagini[nome]);
+              });
+            }
+          }
+        }
+      }
+    }
   }
 }
 

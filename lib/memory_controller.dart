@@ -1,7 +1,6 @@
 
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:html/parser.dart';
@@ -11,8 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 
 
+final MemoryController memoryController =  MemoryController();
+final SettingsController ts = SettingsController();
 
 class MemoryController{
+
 
 
   List cookies = [];
@@ -40,6 +42,7 @@ class MemoryController{
 
     ts._theme = sp.getInt("colore") ?? 13;
     base = Colors.primaries[ts.getIndex];
+    ts.setMode(sp.getInt("tipo_tema") ?? 0);
 
     //print(cookies);
     return 0;
@@ -170,15 +173,37 @@ class MemoryController{
       });
     });
 
+    mense.sort((a, b) => b["servizio"].length.compareTo(a["servizio"].length),);
+    //print(mense[0]["orario"]);
     return mense;
   }
 }
 
-class ThemeSettings extends ChangeNotifier {
+class SettingsController extends ChangeNotifier {
   int _theme = 13;
   int get getIndex => _theme;
-  ThemeMode tm = ThemeMode.system;
-  ThemeMode get getThemeMode => tm;
+  int _tm = ThemeMode.system.index;
+  int get getThemeMode => _tm;
+
+  bool _show = true;
+  bool get showImages => _show;
+
+  bool _updates = true;
+  bool get checkUpdates => _updates;
+
+  SettingsController(){
+    SharedPreferences.getInstance().then((value){
+      _theme = value.getInt("colore") ?? 13;
+      _show = value.getBool("immagini") ?? true;
+      _tm = value.getInt("tipo_tema") ?? 0;
+      _updates = value.getBool("updates") ?? true;
+    });
+  }
+
+  void setUpdates(bool updates){
+    _updates = updates;
+    SharedPreferences.getInstance().then((value) => value.setBool("updates", updates));
+  }
 
   void setTheme(int theme) {
     _theme = theme;
@@ -188,7 +213,15 @@ class ThemeSettings extends ChangeNotifier {
     notifyListeners();
   }
 
-  void notifyListeners() {
-    super.notifyListeners();
+  void setMode(int mode){
+    _tm = mode;
+    SharedPreferences.getInstance().then((value) => value.setInt("tipo_tema", mode));
+    notifyListeners();
   }
+
+  void updateShow(bool value) async{
+    _show  = value;
+    SharedPreferences.getInstance().then((sp) => sp.setBool("immagini", value));
+  }
+
 }

@@ -15,10 +15,9 @@ void main() async {
   runApp(const MyApp());
 }
 
-MemoryController memoryController = MemoryController();
+
 
 MaterialColor base = Colors.amber;
-ThemeSettings ts = ThemeSettings();
 
 
 
@@ -35,7 +34,7 @@ class MyApp extends StatelessWidget {
       animation: ts,
       builder: (context, child) => MaterialApp(
         title: 'App Mensa',
-        theme: ThemeData(primarySwatch: base),
+        theme: ThemeData(primarySwatch: base, ),
         darkTheme: ThemeData(
             brightness: Brightness.dark,
             primarySwatch: base,
@@ -43,6 +42,7 @@ class MyApp extends StatelessWidget {
             primaryColor: base,
             checkboxTheme:
                 CheckboxThemeData(fillColor: MaterialStatePropertyAll(base))),
+        themeMode: ThemeMode.values[ts.getThemeMode],
         home: validCookie ? const MyHomePage() : const LoginPage(),
       ),
     );
@@ -143,7 +143,8 @@ class _MyHomePageState extends State<MyHomePage>
   @override
   void initState() {
     // print("creo lo stato");
-    controllaVersione();
+    if(ts.checkUpdates) controllaVersione();
+
     listaMense = [];
     ottieni();
     super.initState();
@@ -161,7 +162,7 @@ class _MyHomePageState extends State<MyHomePage>
           IconButton(
               onPressed: () async {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => Settings()));
+                    MaterialPageRoute(builder: (context) => const Settings()));
                 //print(col);
                 //ts.setTheme(col);
               },
@@ -192,8 +193,8 @@ class _MyHomePageState extends State<MyHomePage>
                 )),
               ),
             )
-          : const LinearProgressIndicator(
-              color: Colors.amber,
+          :  LinearProgressIndicator(
+              color:Theme.of(context).primaryColor,
             ),
     );
   }
@@ -240,7 +241,7 @@ class Scheda extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => ContainerAperto(
-                              nomeMensa: nomeMensa, listaMenu: listaMenu),
+                              nomeMensa: nomeMensa, listaMenu: listaMenu, orario: orario,),
                         ));
                   }
                 : null,
@@ -255,8 +256,8 @@ class Scheda extends StatelessWidget {
                       style: TextStyle(
                           color: servizio == "Servizio Regolare"
                               ? Theme.of(context).textTheme.button?.color
-                              : Colors.black)),
-                  Text((gestore != null ? "Gestita da: $gestore" : "")),
+                              : Theme.of(context).disabledColor)),
+                  Text((gestore != null ? "Gestita da: $gestore" : ""), style: TextStyle(color: Theme.of(context).disabledColor),),
                 ],
               ),
             ),
