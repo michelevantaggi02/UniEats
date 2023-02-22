@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -8,15 +7,12 @@ import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'main.dart';
+import 'menu.dart';
 
-
-final MemoryController memoryController =  MemoryController();
+final MemoryController memoryController = MemoryController();
 final SettingsController ts = SettingsController();
 
-class MemoryController{
-
-
-
+class MemoryController {
   List cookies = [];
   String info = "";
 
@@ -48,7 +44,7 @@ class MemoryController{
     return 0;
   }
 
-  Future<List> aggiornaInfo() async {
+  Future<List<Mensa>> aggiornaInfo() async {
     await checkPrefs();
     String biscotti = "";
 
@@ -61,8 +57,12 @@ class MemoryController{
         headers: {"Cookie": biscotti});
 
     if (value.statusCode != 200) {
-      CookieManager.instance().deleteAllCookies();
-      SharedPreferences.getInstance().then((value) => value.clear());
+      //CookieManager.instance().deleteAllCookies();
+      SharedPreferences.getInstance().then((value) {
+        value.remove("body");
+        value.remove("bodydate");
+        value.remove("biscotti");
+      });
       return [];
     }
     info = jsonDecode(value.body)[3]["data"];
@@ -79,104 +79,104 @@ class MemoryController{
     return valuta();
   }
 
+  List<Mensa> valuta() {
+    List<Mensa> mense = [];
 
-  List valuta() {
-    List<dynamic> mense = [];
-
-    //print(stringa);
     final base = parse(info);
 
-    //controllo ogni menu
+    //ottengo la selezione di tutte le mense
+
     base
         .querySelectorAll("div.flex-container > div[style=\"flex-grow: 1\"]")
-        .forEach((element) {
-      String? nomeMensa =
-      element.querySelector("h4")?.text.replaceAll("Mensa ", "").trim();
+        .forEach((HTMLmensa) {
+      String nomeMensa =
+          HTMLmensa.querySelector("h4")!.text.replaceAll("Mensa ", "").trim();
 
-      String? gestore = element
-          .querySelector(
+      String? gestoreMensa = HTMLmensa.querySelector(
         "span.views-field-field-gestore-mensa > span.field-content",
-      )
-          ?.text;
+      )?.text;
 
-      var stato = element.querySelector(
+      //contiene informazioni sugli orari e sullo stato del servizio
+      final stato = HTMLmensa.querySelector(
           "div.views-field-views-conditional-field > span.field-content");
-      String? servizio = stato?.querySelector(".w3-btn")?.text.trim();
+      bool servizio =
+          stato?.querySelector(".w3-btn")?.text.trim() == "Servizio Regolare";
+
       List? giorni = stato?.querySelectorAll(
           ".office-hours > .office-hours__item > .office-hours__item-label");
       List? ore = stato?.querySelectorAll(
           ".office-hours > .office-hours__item > .office-hours__item-slots");
       String orario = "";
+
+      //costruisco dinamicamente l'orario di apertura
       for (int i = 0; i < min(giorni!.length, ore!.length); i++) {
         orario += giorni[i].text + "" + ore[i].text + "\n";
       }
-      final menu = element.querySelector(".w3-modal");
 
-      List<Map?> listaMenu = [];
+      //creo una nuova mensa con gli elementi appena raccolti
+      Mensa mensa = Mensa(
+          nome: nomeMensa,
+          gestore: gestoreMensa,
+          attiva: servizio,
+          orario: orario);
 
-      menu
-          ?.querySelectorAll(".w3-container .w3-row-padding .w3-col")
-          .forEach((ora) {
-        Map<String, dynamic> nuovoMenu = {};
-        nuovoMenu["nome"] = ora.querySelector("header > p")?.text;
-        nuovoMenu["contenuti"] = [];
+      //tag con tutte le informazioni sui vari menu
+      final menu = HTMLmensa.querySelector(".w3-modal");
 
-        //print(ora.innerHtml);
-        // print(ora.querySelectorAll("div.view-content > div.w3-center > .w3-border-bottom"));
-        ora
-            .querySelectorAll(
-            "div.view-content > div.w3-center > div.w3-border-bottom")
-            .forEach((contenuto) {
-          Map listaContenuti = {};
-          String? nomeContenuto = contenuto.querySelector("h4")?.text;
+      menu?.querySelectorAll(".w3-container .w3-row-padding .w3-col").forEach(
+        (HTMLmenu) {
+          Menu nuovoMenu = Menu(HTMLmenu.querySelector("header > p")!.text);
 
-          listaContenuti["nome"] = nomeContenuto;
-          listaContenuti["piatti"] = [];
+          HTMLmenu.querySelectorAll(
+                  "div.view-content > div.w3-center > div.w3-border-bottom")
+              .forEach((HTMLportata) {
+            Portata nuovaPortata =
+                Portata(HTMLportata.querySelector("h4")!.text);
 
-          contenuto
-              .querySelectorAll(
-              "div[class^='w3-text'] > div.node--type-ricetta, div[class*='w3-text'] > div.node--type-ricetta")
-              .forEach((ricetta) {
-            Map piatto = {};
-            piatto["nome"] = ricetta.querySelector("h4")?.text;
-            //print(ricetta.innerHtml);
-            piatto["ingredienti"] = [];
-            ricetta.querySelectorAll("h6").forEach((h6) {
-              piatto["ingredienti"].add(h6.text.replaceAll(" X", "").trim());
+            HTMLportata.querySelectorAll(
+                    "div[class^='w3-text'] > div.node--type-ricetta, div[class*='w3-text'] > div.node--type-ricetta")
+                .forEach((ricetta) {
+              Map<String, bool> allergeni = {};
+              allergeni["mucca"] =
+                  ricetta.querySelector("img[src *= 'no-cow']") == null;
+              allergeni["glutine"] =
+                  ricetta.querySelector("img[src *= 'no-gluten']") == null;
+              allergeni["vegano"] =
+                  ricetta.querySelector("img[src *= 'vegan']") != null;
+              allergeni["maiale"] =
+                  ricetta.querySelector("img[src *= 'no-pig']") == null;
+              allergeni["vegetariano"] =
+                  ricetta.querySelector("img[src *= 'vegetarian']") != null;
+
+
+              Piatto piatto =
+                  Piatto(ricetta.querySelector("h4")!.text, allergeni);
+
+              ricetta.querySelectorAll("h6").forEach((h6) => piatto
+                  .aggiungiIngrediente(h6.text.replaceAll(" X", "").trim()));
+
+
+              nuovaPortata.aggiungiPiatto(piatto);
             });
-
-            piatto["mucca"] =
-                ricetta.querySelector("img[src *= 'no-cow']") == null;
-            piatto["glutine"] =
-                ricetta.querySelector("img[src *= 'no-gluten']") == null;
-            piatto["vegano"] =
-                ricetta.querySelector("img[src *= 'vegan']") != null;
-            piatto["maiale"] =
-                ricetta.querySelector("img[src *= 'no-pig']") == null;
-            piatto["vegetariano"] =
-                ricetta.querySelector("img[src *= 'vegetarian']") != null;
-
-            listaContenuti["piatti"].add(piatto);
+            nuovoMenu.aggiungiPortata(nuovaPortata);
           });
 
-          nuovoMenu["contenuti"].add(listaContenuti);
-        });
+          mensa.aggiungiMenu(nuovoMenu);
+        },
+      );
 
-        listaMenu.add(nuovoMenu);
-      });
-      mense.add({
-        "nome": nomeMensa,
-        "orario": orario,
-        "menu": listaMenu,
-        "servizio": servizio,
-        "gestore": gestore
-      });
+      mense.add(mensa);
+
     });
 
-    mense.sort((a, b) => b["servizio"].length.compareTo(a["servizio"].length),);
-    //print(mense[0]["orario"]);
+    mense.sort(
+        (a,b) => b.attiva ? (a.attiva ? 0 : 1 ): -1
+    );
+
     return mense;
   }
+
+
 }
 
 class SettingsController extends ChangeNotifier {
@@ -185,24 +185,26 @@ class SettingsController extends ChangeNotifier {
   int _tm = ThemeMode.system.index;
   int get getThemeMode => _tm;
 
-  bool _show = true;
+  bool _show = false;
   bool get showImages => _show;
 
   bool _updates = true;
   bool get checkUpdates => _updates;
 
-  SettingsController(){
-    SharedPreferences.getInstance().then((value){
+  SettingsController() {
+    SharedPreferences.getInstance().then((value) {
       _theme = value.getInt("colore") ?? 13;
-      _show = value.getBool("immagini") ?? true;
+      _show = value.getBool("immagini") ?? false;
+
       _tm = value.getInt("tipo_tema") ?? 0;
       _updates = value.getBool("updates") ?? true;
     });
   }
 
-  void setUpdates(bool updates){
+  void setUpdates(bool updates) {
     _updates = updates;
-    SharedPreferences.getInstance().then((value) => value.setBool("updates", updates));
+    SharedPreferences.getInstance()
+        .then((value) => value.setBool("updates", updates));
   }
 
   void setTheme(int theme) {
@@ -213,15 +215,15 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setMode(int mode){
+  void setMode(int mode) {
     _tm = mode;
-    SharedPreferences.getInstance().then((value) => value.setInt("tipo_tema", mode));
+    SharedPreferences.getInstance()
+        .then((value) => value.setInt("tipo_tema", mode));
     notifyListeners();
   }
 
-  void updateShow(bool value) async{
-    _show  = value;
+  void updateShow(bool value) async {
+    _show = value;
     SharedPreferences.getInstance().then((sp) => sp.setBool("immagini", value));
   }
-
 }

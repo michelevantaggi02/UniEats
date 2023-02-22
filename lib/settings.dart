@@ -30,7 +30,9 @@ class SettingsState extends  State<Settings>{
                 content: MaterialColorPicker(
                   allowShades: false,
                   onMainColorChange: (value) {
-                    ts.setTheme(Colors.primaries.indexOf(value as MaterialColor));
+                    setState(() {
+                      ts.setTheme(Colors.primaries.indexOf(value as MaterialColor));
+                    });
                   },
                   selectedColor: Colors.primaries[ts.getIndex],
                   colors: Colors.primaries,
@@ -46,7 +48,9 @@ class SettingsState extends  State<Settings>{
                 for(ThemeMode tm in ThemeMode.values)
                   DropdownMenuItem(value: tm.index, child: Text(tm.name))
               ], onChanged: (value) {
-                ts.setMode(value as int);
+                setState(() {
+                  ts.setMode(value as int);
+                });
               },
                 value: ts.getThemeMode,
               ),
@@ -58,7 +62,7 @@ class SettingsState extends  State<Settings>{
               }),),
             ),
             ListTile(
-              title: const Text("Mostra immagini"),
+              title: const Text("Mostra immagini (SPERIMENTALE)"),
               trailing: Switch(value: ts.showImages, onChanged: (change) => setState(() {
                 ts.updateShow(change);
               }),),

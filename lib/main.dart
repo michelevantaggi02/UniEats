@@ -7,6 +7,7 @@ import 'package:mensa_adisu/settings.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'login.dart';
+import 'menu.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,11 +16,7 @@ void main() async {
   runApp(const MyApp());
 }
 
-
-
 MaterialColor base = Colors.amber;
-
-
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -33,9 +30,13 @@ class MyApp extends StatelessWidget {
     return AnimatedBuilder(
       animation: ts,
       builder: (context, child) => MaterialApp(
-        title: 'App Mensa',
-        theme: ThemeData(primarySwatch: base, ),
+        title: 'UniEats',
+        theme: ThemeData(
+          useMaterial3: true,
+          primarySwatch: base,
+        ),
         darkTheme: ThemeData(
+            useMaterial3: true,
             brightness: Brightness.dark,
             primarySwatch: base,
             indicatorColor: base,
@@ -58,9 +59,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage>
     with SingleTickerProviderStateMixin {
-  List<dynamic> listaMense = [];
-
-
+  List<Mensa> listaMense = [];
 
   void controllaVersione() async {
     get(Uri.parse(
@@ -107,10 +106,9 @@ class _MyHomePageState extends State<MyHomePage>
     });
   }
 
-
   void ottieni() {
     //print("inizio la richiesta delle mense");
-    if(memoryController.info == ""){
+    if (memoryController.info == "") {
       memoryController.aggiornaInfo().then((value) {
         if (value.isNotEmpty) {
           if (mounted) {
@@ -123,27 +121,23 @@ class _MyHomePageState extends State<MyHomePage>
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginPage()),
-                    (Route<dynamic> route) => false,
+                (Route<dynamic> route) => false,
               );
             }
           }
         }
-      }
-        );
-      }else{
-        setState(() {
-          listaMense = memoryController.valuta();
-        });
-      }
-      }
-
-
-
+      });
+    } else {
+      setState(() {
+        listaMense = memoryController.valuta();
+      });
+    }
+  }
 
   @override
   void initState() {
     // print("creo lo stato");
-    if(ts.checkUpdates) controllaVersione();
+    if (ts.checkUpdates) controllaVersione();
 
     listaMense = [];
     ottieni();
@@ -181,67 +175,54 @@ class _MyHomePageState extends State<MyHomePage>
                   child: ListView(
                     children: [
                       for (final mensa in listaMense)
-                        Scheda(
-                          listaMenu: mensa["menu"],
-                          orario: mensa["orario"],
-                          nomeMensa: mensa["nome"],
-                          gestore: mensa["gestore"],
-                          servizio: mensa["servizio"],
+                        Scheda(mensa
                         ),
                     ],
                   ),
                 )),
               ),
             )
-          :  LinearProgressIndicator(
-              color:Theme.of(context).primaryColor,
+          : LinearProgressIndicator(
+              color: Theme.of(context).primaryColor,
             ),
     );
   }
 }
 
 class Scheda extends StatelessWidget {
-  final String? servizio;
-  final String? nomeMensa;
-  final List<Map?> listaMenu;
-  final String? orario;
-  final String? gestore;
-  const Scheda(
-      {Key? key,
-      this.servizio,
-      this.nomeMensa,
-      required this.listaMenu,
-      this.orario,
-      this.gestore})
-      : super(key: key);
+  final Mensa _mensa;
+  const Scheda(this._mensa, {Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: SizedBox(
-        height: 100,
-        child: Container(
-          decoration: BoxDecoration(
+      child: Card(
+        child: SizedBox(
+          height: 100,
+          /*decoration: BoxDecoration(
               border: Border(
                   bottom: BorderSide(
                       color: servizio == "Servizio Regolare"
                           ? Theme.of(context).primaryColor
                           : Colors.transparent,
-                      width: 3))),
-          child: ElevatedButton(
-            style: ButtonStyle(
+                      width: 3))),*/
+          child: TextButton(
+            /*style: ButtonStyle(
                 elevation: MaterialStatePropertyAll(
                     servizio == "Servizio Regolare" ? 10.0 : 0),
                 backgroundColor:
-                    MaterialStatePropertyAll(Theme.of(context).cardColor)),
-            onPressed: servizio == "Servizio Regolare"
+                    MaterialStatePropertyAll(Theme.of(context).cardColor)),*/
+            onPressed: _mensa.attiva
                 ? () {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => ContainerAperto(
-                              nomeMensa: nomeMensa, listaMenu: listaMenu, orario: orario,),
+                            _mensa.listaMenu,
+                            nomeMensa: _mensa.nome,
+                            orario: _mensa.orario,
+                          ),
                         ));
                   }
                 : null,
@@ -251,13 +232,16 @@ class Scheda extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(nomeMensa!,
+                  Text(_mensa.nome,
                       textScaleFactor: 1.4,
                       style: TextStyle(
-                          color: servizio == "Servizio Regolare"
+                          color: _mensa.attiva
                               ? Theme.of(context).textTheme.button?.color
                               : Theme.of(context).disabledColor)),
-                  Text((gestore != null ? "Gestita da: $gestore" : ""), style: TextStyle(color: Theme.of(context).disabledColor),),
+                  Text(
+                    (_mensa.gestore != null ? "Gestita da: ${_mensa.gestore}" : ""),
+                    style: TextStyle(color: Theme.of(context).disabledColor),
+                  ),
                 ],
               ),
             ),
@@ -267,5 +251,3 @@ class Scheda extends StatelessWidget {
     );
   }
 }
-
-

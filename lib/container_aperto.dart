@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -6,18 +7,18 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:http/http.dart';
 
 import 'memory_controller.dart';
+import 'menu.dart';
 
 class ContainerAperto extends StatefulWidget {
   final String? nomeMensa;
-  final List<Map?> listaMenu;
+  List<Menu> listaMenu;
   final String? orario;
-  const ContainerAperto(
-      {Key? key, required this.nomeMensa, required this.listaMenu, this.orario})
+  ContainerAperto(this.listaMenu,
+      {Key? key, required this.nomeMensa, this.orario})
       : super(key: key);
 
   @override
-  State<StatefulWidget> createState() =>
-      StatoAperto(nomeMensa, listaMenu, orario);
+  State<StatefulWidget> createState() => StatoAperto();
 }
 
 Map<String, bool> filtroPiatti = {
@@ -28,23 +29,20 @@ Map<String, bool> filtroPiatti = {
   "vegetariano": true
 };
 
-class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
-  final String? nomeMensa;
-  List<Map?> listaMenu;
+class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
   Map<String, String> listaImmagini = {};
-  final String? orario;
   TabController? controller;
   int sceltaOrario = 0;
   int sceltaPasto = 0;
   final double _imgSize = 50;
 
-  SettingsController sc = SettingsController();
+  final SettingsController sc = SettingsController();
 
-  StatoAperto(this.nomeMensa, this.listaMenu, this.orario);
+  StatoAperto();
 
   @override
   void initState() {
-    if(sc.showImages){
+    if (sc.showImages) {
       getImgSrc();
     }
     //print(orario);
@@ -56,18 +54,17 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
 
-      controller?.animateTo(sceltaPasto);
-
-    if (listaMenu.isNotEmpty &&
-        listaMenu[sceltaOrario]?["contenuti"]?.isNotEmpty) {
+    if (widget.listaMenu.isNotEmpty &&
+        widget.listaMenu[sceltaOrario].portate.isNotEmpty) {
       controller = TabController(
-          length: listaMenu[sceltaOrario]?["contenuti"].length,
+          length: widget.listaMenu[sceltaOrario].portate.length,
           vsync: this,
-          initialIndex: sceltaPasto
-      );
-      controller?.addListener(() {sceltaPasto = controller?.index ?? 0;});
+          initialIndex: min(sceltaPasto,  widget.listaMenu[sceltaOrario].portate.length - 1));
+      controller?.addListener(() {
+        //print(controller?.index);
+        sceltaPasto = controller?.index ?? 0;
+      });
     }
-    
 
     Center noInfo = Center(
       child: Column(
@@ -82,13 +79,14 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(nomeMensa!),
-        bottom: listaMenu.isNotEmpty &&
-                listaMenu[sceltaOrario]!["contenuti"].isNotEmpty
+        title: Text(widget.nomeMensa!),
+        bottom: widget.listaMenu.isNotEmpty &&
+                widget.listaMenu[sceltaOrario].portate.isNotEmpty
             ? TabBar(
                 tabs: [
-                  for (final tab in listaMenu[sceltaOrario]!["contenuti"])
-                    Tab(text: tab!["nome"] ?? "none"),
+                  for (Portata portata
+                      in widget.listaMenu[sceltaOrario].portate)
+                    Tab(text: portata.nome),
                 ],
                 controller: controller,
                 labelColor: Theme.of(context).textTheme.bodyText2?.color,
@@ -114,8 +112,8 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                 onPressed: () => showDialog<String>(
                       context: context,
                       builder: (BuildContext context) => AlertDialog(
-                        title: Text(nomeMensa ?? ""),
-                        content: Text(orario?.trim() ?? ""),
+                        title: Text(widget.nomeMensa ?? ""),
+                        content: Text(widget.orario?.trim() ?? ""),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, 'OK'),
@@ -128,59 +126,58 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
           ),
         ],
       ),
-      body: listaMenu.isNotEmpty &&
-              listaMenu[sceltaOrario]!["contenuti"].isNotEmpty
+      body: widget.listaMenu.isNotEmpty &&
+              widget.listaMenu[sceltaOrario].portate.isNotEmpty
           ? TabBarView(
               controller: controller,
               children: [
-                for (final tab in listaMenu[sceltaOrario]!["contenuti"])
-                  tab["piatti"]?.isNotEmpty
+                for (Portata tab in widget.listaMenu[sceltaOrario].portate)
+                  tab.piatti.isNotEmpty
                       ? RefreshIndicator(
                           onRefresh: () async {
-                            List mense = await memoryController.aggiornaInfo();
+                            List<Mensa> mense = await memoryController.aggiornaInfo();
                             //print(mense.firstWhere((element) => element["nome"] == nomeMensa));
                             if (mounted) {
                               setState(() {
-                                listaMenu = mense.firstWhere((element) =>
-                                    element["nome"] == nomeMensa)["menu"];
+                                widget.listaMenu = mense.firstWhere((element) =>
+                                    element.nome ==
+                                    widget.nomeMensa).listaMenu;
                               });
                             }
                           },
                           child: ListView(
                             padding: const EdgeInsets.all(4.0),
                             children: [
-                              for (final tab2 in tab["piatti"].reversed)
+                              for (Piatto piatto in tab.piatti.reversed)
                                 if (filtroPiatti.entries
                                     .map((element) {
                                       //print("${tab2["nome"]}-${element.key}:${element.value || (element.value == tab2[element.key])}");
-                                      return tab2[element.key] == false ||
-                                          element.value == tab2[element.key];
+                                      return piatto.allergeni[element.key] == false ||
+                                          element.value == piatto.allergeni[element.key];
                                     })
                                     .toList()
                                     .every((element) => element == true))
                                   ListTile(
-                                    minVerticalPadding: 4.0,
-
-                                    leading: sc.showImages && listaImmagini.containsKey(
-                                            tab2["nome"].toLowerCase())
+                                    leading: sc.showImages &&
+                                            listaImmagini.containsKey(
+                                                piatto.nome.toLowerCase())
                                         ? CachedNetworkImage(
-                                            imageUrl: listaImmagini[tab2["nome"]
+                                            imageUrl: listaImmagini[piatto.nome
                                                     .toLowerCase()] ??
                                                 "",
                                             progressIndicatorBuilder: (context,
                                                     url, progress) =>
                                                 CircularProgressIndicator(
-                                                    value: progress
-                                                                .downloaded /
+                                                    value: progress.downloaded /
                                                         (progress.totalSize ??
                                                             1)),
                                             height: _imgSize,
                                             width: _imgSize,
                                             fit: BoxFit.cover,
-                                      cacheManager: DefaultCacheManager(),
+                                            cacheManager: DefaultCacheManager(),
                                           )
                                         : null,
-                                    trailing: tab2["ingredienti"].isNotEmpty
+                                    trailing: piatto.ingredienti.isNotEmpty
                                         ? IconButton(
                                             onPressed: () => showDialog(
                                                   context: context,
@@ -188,9 +185,9 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                                                       (BuildContext context) =>
                                                           AlertDialog(
                                                     title: Text(
-                                                        "Ingredienti ${tab2["nome"].toLowerCase()}"),
+                                                        "Ingredienti ${piatto.nome.toLowerCase()}"),
                                                     content: Text(
-                                                        tab2["ingredienti"]
+                                                        piatto.ingredienti
                                                             .join("\n")),
                                                     actions: [
                                                       TextButton(
@@ -205,7 +202,7 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                                             icon:
                                                 const Icon(Icons.info_outline))
                                         : null,
-                                    title: Text(tab2["nome"].toLowerCase()),
+                                    title: Text(piatto.nome.toLowerCase()),
                                     //shape: Border(bottom: BorderSide(color: Theme.of(context).primaryColor)),
                                   )
                             ],
@@ -213,16 +210,15 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                         )
                       : noInfo,
               ],
-        
             )
           : noInfo,
-      bottomNavigationBar: listaMenu.length >= 2
+      bottomNavigationBar: widget.listaMenu.length >= 2
           ? BottomNavigationBar(
               items: [
-                for (int i = 0; i < listaMenu.length; i++)
+                for (int i = 0; i < widget.listaMenu.length; i++)
                   BottomNavigationBarItem(
                     icon: Icon(i % 2 == 0 ? Icons.sunny : Icons.nights_stay),
-                    label: listaMenu[i]!["nome"]
+                    label: widget.listaMenu[i].nome
                         .toLowerCase()
                         .replaceAll("pranzo", "")
                         .replaceAll("cena", "")
@@ -236,7 +232,10 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
                     controller = null;
                   }
                   sceltaOrario = i;
-                  getImgSrc();
+                  if(sc.showImages){
+                    getImgSrc();
+
+                  }
                 });
               },
               showUnselectedLabels: true,
@@ -249,13 +248,14 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
   }
 
   void getImgSrc() async {
-    if(listaMenu.isNotEmpty){
-      for (final cont in listaMenu[sceltaOrario]?["contenuti"]) {
-        for (final piatto in cont["piatti"]) {
+    //print("Immagini si");
+    if (widget.listaMenu.isNotEmpty) {
+      for (Portata portata in widget.listaMenu[sceltaOrario].portate) {
+        for (Piatto piatto in portata.piatti) {
           if (!mounted) {
             return;
           }
-          String? nome = piatto["nome"].toLowerCase();
+          String nome = piatto.nome.toLowerCase();
           if (!listaImmagini.containsKey(nome)) {
             //print(nome);
 
@@ -288,7 +288,7 @@ class StatoAperto extends State<StatefulWidget> with TickerProviderStateMixin {
             var body = jsonDecode(response);
             if (mounted && body["error"] == null) {
               setState(() {
-                listaImmagini[nome!] = body["photos"]?[0]?["src"]?["small"];
+                listaImmagini[nome] = body["photos"]?[0]?["src"]?["small"];
                 //print(listaImmagini[nome]);
               });
             }
@@ -304,12 +304,11 @@ class CustomDialog extends StatefulWidget {
   const CustomDialog({Key? key, required this.contestoPadre}) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => StatoDialog(contestoPadre);
+  State<StatefulWidget> createState() => StatoDialog();
 }
 
-class StatoDialog extends State<StatefulWidget> {
-  final StatoAperto contestoPadre;
-  StatoDialog(this.contestoPadre);
+class StatoDialog extends State<CustomDialog> {
+
 
   @override
   Widget build(BuildContext context) {
@@ -334,9 +333,9 @@ class StatoDialog extends State<StatefulWidget> {
         TextButton(
           onPressed: () {
             Navigator.pop(context, 'OK');
-            if (contestoPadre.mounted) {
-              contestoPadre.setState(() {
-                contestoPadre.sceltaPasto = contestoPadre.controller!.index;
+            if (widget.contestoPadre.mounted) {
+              widget.contestoPadre.setState(() {
+                widget.contestoPadre.sceltaPasto = widget.contestoPadre.controller!.index;
               });
             }
           },
