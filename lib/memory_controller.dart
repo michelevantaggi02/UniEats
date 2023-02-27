@@ -102,14 +102,14 @@ class MemoryController {
       bool servizio =
           stato?.querySelector(".w3-btn")?.text.trim() == "Servizio Regolare";
 
-      List? giorni = stato?.querySelectorAll(
-          ".office-hours > .office-hours__item > .office-hours__item-label");
-      List? ore = stato?.querySelectorAll(
-          ".office-hours > .office-hours__item > .office-hours__item-slots");
+      List giorni = stato?.querySelectorAll(
+          ".office-hours > .office-hours__item > .office-hours__item-label") ?? [];
+      List ore = stato?.querySelectorAll(
+          ".office-hours > .office-hours__item > .office-hours__item-slots") ?? [];
       String orario = "";
 
       //costruisco dinamicamente l'orario di apertura
-      for (int i = 0; i < min(giorni!.length, ore!.length); i++) {
+      for (int i = 0; i < min(giorni.length, ore.length); i++) {
         orario += giorni[i].text + "" + ore[i].text + "\n";
       }
 
