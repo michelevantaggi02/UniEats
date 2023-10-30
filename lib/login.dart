@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'home.dart';
+import 'version_control.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'main.dart';
-
-
-
+import 'memory_controller.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -14,7 +13,6 @@ class LoginPage extends StatefulWidget {
 }
 
 class LoginState extends State<LoginPage> {
-
   bool statoPulsante = false;
 
   final email = TextEditingController();
@@ -23,24 +21,24 @@ class LoginState extends State<LoginPage> {
   HeadlessInAppWebView? headlessWebView;
   InAppWebViewController? controller;
   late ElevatedButton buttonLogin;
-  String? url  ="";
+  String? url = "";
 
-  void controllaCookie() async{
+  void controllaCookie() async {
     final CookieManager manager = CookieManager.instance();
     //print("controllo i cookie");
-    List<Cookie> cook = await manager.getCookies(url: Uri.parse("https://intrastudents.adisu.umbria.it"));
+    List<Cookie> cook = await manager.getCookies(
+        url: Uri.parse("https://intrastudents.adisu.umbria.it"));
 
     int lun = cook.length;
-    //print(cook.length);
-    if(lun == 3){
-
+    print(cook.length);
+    if (lun == 3) {
       List<String> indici = [];
       SharedPreferences sp = await SharedPreferences.getInstance();
-      for(final c in cook){
-        //print(c.name);
+      for (final c in cook) {
+        print(c.name);
         indici.add(c.name);
 
-          sp.setString(c.name, c.value);
+        sp.setString(c.name, c.value);
       }
       sp.setStringList("biscotti", indici);
 
@@ -52,36 +50,40 @@ class LoginState extends State<LoginPage> {
   void initState() {
     super.initState();
     controllaCookie();
+    print("Init");
     headlessWebView = HeadlessInAppWebView(
-      initialUrlRequest:
-      URLRequest(url: Uri.parse("https://intrastudents.adisu.umbria.it")),
+        initialUrlRequest: URLRequest(
+            url: Uri.parse(
+                "https://intrastudents.adisu.umbria.it/accesso-studenti")),
+        onWebViewCreated: (InAppWebViewController controller) {
+          setState(() {
+            statoPulsante = true;
+            print("pulsante creato");
+          });
+          this.controller = controller;
+        },
+        onLoadStart: (InAppWebViewController controller, url) {
+          //print(url);
 
-      onWebViewCreated: ( InAppWebViewController controller) {
-        setState(() {
-          statoPulsante = true;
+          if (url.toString() ==
+              "https://intrastudents.adisu.umbria.it/node?check_logged_in=1") {
+            print("Login success");
+
+            controllaCookie();
+          }
         });
-        this.controller = controller;
-      },
-      onLoadStart: (InAppWebViewController controller, url) {
-        //print(url);
-
-
-        if(url.toString() == "https://intrastudents.adisu.umbria.it/intrastudents?check_logged_in=1"){
-
-          controllaCookie();
-        }
-      }
-    );
 
     headlessWebView?.run();
+
+    if (ts.checkUpdates) controllaVersione(context);
   }
 
-  void vaiHome(){
+  void vaiHome() {
+    print("Vado alla home");
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-          builder: (context) => const MyHomePage()),
-          (Route<dynamic> route) => false,
+      MaterialPageRoute(builder: (context) => HomePage()),
+      (Route<dynamic> route) => false,
     );
   }
 
@@ -93,26 +95,24 @@ class LoginState extends State<LoginPage> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
-
     buttonLogin = ElevatedButton(
+      onPressed: statoPulsante
+          ? () async {
+              print("Pulsante premuto");
 
-      onPressed: statoPulsante ? () async {
-
-
-        String mail = email.text;
-        String pass = password.text;
-        controller?.evaluateJavascript(source: """
+              String mail = email.text;
+              String pass = password.text;
+              controller?.evaluateJavascript(source: """
         
         document.querySelector("#edit-name").value = "$mail";
         document.querySelector("#edit-pass").value = "$pass";
         document.querySelector("#edit-submit").click();
         
         """);
-
-      } : null,
+            }
+          : null,
       //style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
       child: const Text("Log In"),
     );
@@ -127,53 +127,48 @@ class LoginState extends State<LoginPage> {
         child: Center(
           child: Form(
               child: Column(
-                children: [
-                  SizedBox(
-                    width: 500,
-
-                    child: TextFormField(
-                      decoration: const InputDecoration(
-                        labelText: "Email",
-                        icon: Icon(Icons.email),
-
-
-                      ),
-                      autofillHints: const [AutofillHints.email],
-                      controller: email,
-                      keyboardType: TextInputType.emailAddress,
-
-                    ),
+            children: [
+              SizedBox(
+                width: 500,
+                child: TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: "Email",
+                    icon: Icon(Icons.email),
                   ),
+                  autofillHints: const [AutofillHints.email],
+                  controller: email,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+              ),
 
-                  SizedBox(
-                    width: 500,
-                    child: TextFormField(
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: "Password",
-                        icon: Icon(Icons.password),
-                      ),
-                      validator: (String? val) {
-                        if (val == null || val.isEmpty) {
-                          return "Insert valid password";
-                        }
-                        return null;
-                      },
-                      controller: password,
-                      autofillHints: const [AutofillHints.password],
-                      onEditingComplete: () => TextInput.finishAutofillContext(),
-                    ),
+              SizedBox(
+                width: 500,
+                child: TextFormField(
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "Password",
+                    icon: Icon(Icons.password),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    child: buttonLogin,
-                  ),
-                  //const Text("Se hai già eseguito il login, chiudi e riapri la app.\n Se questa schermata ricompare rieseguire il login", style: TextStyle(color: Colors.amber), textAlign: TextAlign.center,),
-                ],
-              )),
-          ),
+                  validator: (String? val) {
+                    if (val == null || val.isEmpty) {
+                      return "Insert valid password";
+                    }
+                    return null;
+                  },
+                  controller: password,
+                  autofillHints: const [AutofillHints.password],
+                  onEditingComplete: () => TextInput.finishAutofillContext(),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(20),
+                child: buttonLogin,
+              ),
+              //const Text("Se hai già eseguito il login, chiudi e riapri la app.\n Se questa schermata ricompare rieseguire il login", style: TextStyle(color: Colors.amber), textAlign: TextAlign.center,),
+            ],
+          )),
+        ),
       ),
-
     );
   }
 }

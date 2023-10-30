@@ -10,11 +10,9 @@ import 'memory_controller.dart';
 import 'menu.dart';
 
 class ContainerAperto extends StatefulWidget {
-  final String? nomeMensa;
-  List<Menu> listaMenu;
-  final String? orario;
-  ContainerAperto(this.listaMenu,
-      {Key? key, required this.nomeMensa, this.orario})
+  final Mensa mensa;
+  ContainerAperto(this.mensa,
+      {Key? key,})
       : super(key: key);
 
   @override
@@ -38,13 +36,15 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
 
   final SettingsController sc = SettingsController();
 
-  StatoAperto();
-
+  bool loading = true;
+  
   @override
   void initState() {
     if (sc.showImages) {
       getImgSrc();
     }
+    memoryController.getMenu(widget.mensa, false).whenComplete(() => setState(() { loading = false; }));
+
     //print(orario);
     //print(orario?.trim());
     //print(orario?.trim().split(RegExp(r"\s+")).join(" "));
@@ -54,12 +54,16 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
 
-    if (widget.listaMenu.isNotEmpty &&
-        widget.listaMenu[sceltaOrario].portate.isNotEmpty) {
+
+
+    //print(widget.mensa.listaMenu[sceltaOrario]);
+
+    if (widget.mensa.listaMenu.isNotEmpty &&
+        widget.mensa.listaMenu[sceltaOrario].portate.isNotEmpty) {
       controller = TabController(
-          length: widget.listaMenu[sceltaOrario].portate.length,
+          length: widget.mensa.listaMenu[sceltaOrario].portate.length,
           vsync: this,
-          initialIndex: min(sceltaPasto,  widget.listaMenu[sceltaOrario].portate.length - 1));
+          initialIndex: min(sceltaPasto,  widget.mensa.listaMenu[sceltaOrario].portate.length - 1));
       controller?.addListener(() {
         //print(controller?.index);
         sceltaPasto = controller?.index ?? 0;
@@ -70,32 +74,35 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
-        children: const [
-          Icon(Icons.broken_image_outlined),
-          Text("Nessuna informazione")
+
+        children:  [
+          const Icon(Icons.book_outlined),
+          Text("Menù non disponibile", style: Theme.of(context).textTheme.headlineSmall,),
+          const Text("Orari di apertura:"),
+          Text(widget.mensa.orario.trim() ?? ""),
         ],
       ),
     );
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.nomeMensa!),
-        bottom: widget.listaMenu.isNotEmpty &&
-                widget.listaMenu[sceltaOrario].portate.isNotEmpty
+        title: Text(widget.mensa.nome),
+        bottom: widget.mensa.listaMenu.isNotEmpty &&
+                widget.mensa.listaMenu[sceltaOrario].portate.isNotEmpty
             ? TabBar(
                 tabs: [
                   for (Portata portata
-                      in widget.listaMenu[sceltaOrario].portate)
+                      in widget.mensa.listaMenu[sceltaOrario].portate)
                     Tab(text: portata.nome),
                 ],
                 controller: controller,
-                labelColor: Theme.of(context).textTheme.bodyText2?.color,
+                labelColor: Theme.of(context).textTheme.bodyMedium?.color,
                 labelPadding: const EdgeInsets.symmetric(horizontal: 5),
 
                 //indicatorColor: Theme.of(context).indicatorColor,
               )
             : null,
-        actions: [
+        actions: widget.mensa.linkMenu.isNotEmpty ? [
           Tooltip(
             message: "Filtro",
             child: IconButton(
@@ -112,8 +119,8 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
                 onPressed: () => showDialog<String>(
                       context: context,
                       builder: (BuildContext context) => AlertDialog(
-                        title: Text(widget.nomeMensa ?? ""),
-                        content: Text(widget.orario?.trim() ?? ""),
+                        title: Text(widget.mensa.nome),
+                        content: Text(widget.mensa.orario?.trim() ?? ""),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, 'OK'),
@@ -124,27 +131,27 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
                     ),
                 icon: const Icon(Icons.info_outlined)),
           ),
-        ],
+        ] : [],
       ),
-      body: widget.listaMenu.isNotEmpty &&
-              widget.listaMenu[sceltaOrario].portate.isNotEmpty
+      body: loading ? const LinearProgressIndicator() : widget.mensa.listaMenu.isNotEmpty &&
+              widget.mensa.listaMenu[sceltaOrario].portate.isNotEmpty
           ? TabBarView(
               controller: controller,
               children: [
-                for (Portata tab in widget.listaMenu[sceltaOrario].portate)
+                for (Portata tab in widget.mensa.listaMenu[sceltaOrario].portate)
                   tab.piatti.isNotEmpty
                       ? RefreshIndicator(
-                          onRefresh: () async {
+                          onRefresh: () async { memoryController.getMenu(widget.mensa, true);},/*() async {
                             List<Mensa> mense = await memoryController.aggiornaInfo();
                             //print(mense.firstWhere((element) => element["nome"] == nomeMensa));
                             if (mounted) {
                               setState(() {
-                                widget.listaMenu = mense.firstWhere((element) =>
+                                widget.mensa.listaMenu = mense.firstWhere((element) =>
                                     element.nome ==
                                     widget.nomeMensa).listaMenu;
                               });
                             }
-                          },
+                          },*/
                           child: ListView(
                             padding: const EdgeInsets.all(4.0),
                             children: [
@@ -212,16 +219,16 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
               ],
             )
           : noInfo,
-      bottomNavigationBar: widget.listaMenu.length >= 2
+      bottomNavigationBar: widget.mensa.listaMenu.length >= 2
           ? BottomNavigationBar(
               items: [
-                for (int i = 0; i < widget.listaMenu.length; i++)
+                for (int i = 0; i < widget.mensa.listaMenu.length; i++)
                   BottomNavigationBarItem(
                     icon: Icon(i % 2 == 0 ? Icons.sunny : Icons.nights_stay),
-                    label: widget.listaMenu[i].nome
+                    label: widget.mensa.listaMenu[i].nome
                         .toLowerCase()
-                        .replaceAll("pranzo", "")
-                        .replaceAll("cena", "")
+                        //.replaceAll("pranzo", "")
+                        //.replaceAll("cena", "")
                         .trim(),
                   )
               ],
@@ -249,8 +256,8 @@ class StatoAperto extends State<ContainerAperto> with TickerProviderStateMixin {
 
   void getImgSrc() async {
     //print("Immagini si");
-    if (widget.listaMenu.isNotEmpty) {
-      for (Portata portata in widget.listaMenu[sceltaOrario].portate) {
+    if (widget.mensa.listaMenu.isNotEmpty) {
+      for (Portata portata in widget.mensa.listaMenu[sceltaOrario].portate) {
         for (Piatto piatto in portata.piatti) {
           if (!mounted) {
             return;

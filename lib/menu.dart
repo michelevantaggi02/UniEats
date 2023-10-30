@@ -2,14 +2,22 @@
 class Mensa{
   final String nome;
   final String? gestore;
+  final String posizione;
   final bool attiva;
   final String orario;
   final List<Menu> _listaMenu = [];
-  get listaMenu => _listaMenu;
+  final List<String> linkMenu = [];
+  List<Menu> get listaMenu => _listaMenu;
 
-  Mensa({required this.nome, this.gestore, required this.attiva, required this.orario});
+
+  Mensa({required this.nome, required this.posizione, this.gestore, required this.attiva, required this.orario});
 
   void aggiungiMenu(Menu menu) => _listaMenu.add(menu);
+
+  @override
+  String toString(){
+    return "$nome - $gestore - attiva: $attiva - menu: $_listaMenu";
+  }
 
 }
 
@@ -24,6 +32,8 @@ class Menu{
 
   void aggiungiPortata(Portata portata) => _portate.add(portata);
 
+  String toString() => "$nome -> $_portate";
+
 }
 
 /// Primi, secondi, contorni, ecc
@@ -35,6 +45,10 @@ class Portata{
   Portata(this.nome);
 
   void aggiungiPiatto(Piatto piatto)  => _piatti.add(piatto);
+  @override
+  String toString() {
+    return "$nome : $piatti";
+  }
 }
 
 /// Elemento del menu del giorno
@@ -48,5 +62,7 @@ class Piatto {
   Piatto(this.nome, this._allergeni);
 
   void aggiungiIngrediente(String ingrediente) => _ingredienti.add(ingrediente);
+
+  String toString() => nome;
 
 }
