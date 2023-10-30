@@ -45,6 +45,9 @@ Siamo aperti a contributi da parte della community. Se desideri migliorare UniEa
 - Proponendo nuove funzionalità o miglioramenti.
 - Inviando una pull request con le tue modifiche.
 
+### Contribuenti
+
+- [@toita86](https://github.com/toita86) Creative director per l'icona e la UI dell'applicazione
 
 ## Licenza
 

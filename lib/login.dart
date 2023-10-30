@@ -15,6 +15,8 @@ class LoginPage extends StatefulWidget {
 class LoginState extends State<LoginPage> {
   bool statoPulsante = false;
 
+  String errorText = "";
+
   final email = TextEditingController();
 
   final password = TextEditingController();
@@ -51,19 +53,27 @@ class LoginState extends State<LoginPage> {
     super.initState();
     controllaCookie();
     print("Init");
+    email.addListener(() => setState(() {
+
+    }));
+    password.addListener(() => setState(() {
+
+    }));
+
     headlessWebView = HeadlessInAppWebView(
         initialUrlRequest: URLRequest(
             url: Uri.parse(
                 "https://intrastudents.adisu.umbria.it/accesso-studenti")),
         onWebViewCreated: (InAppWebViewController controller) {
+          print("created");
           setState(() {
             statoPulsante = true;
             print("pulsante creato");
           });
           this.controller = controller;
         },
-        onLoadStart: (InAppWebViewController controller, url) {
-          //print(url);
+        onLoadStart: (InAppWebViewController controller, url) async {
+          print(url);
 
           if (url.toString() ==
               "https://intrastudents.adisu.umbria.it/node?check_logged_in=1") {
@@ -71,7 +81,22 @@ class LoginState extends State<LoginPage> {
 
             controllaCookie();
           }
-        });
+        },
+        onLoadStop: (InAppWebViewController controller, url) async {
+          print("Stop: $url");
+
+          if(url.toString() == "https://intrastudents.adisu.umbria.it/accesso-studenti?destination=/accesso-studenti"){
+            String testo = await controller.evaluateJavascript(source: """
+            document.querySelector("div.w3-panel").innerText;
+            """);
+            if(mounted){
+              setState(() {
+                statoPulsante = true;
+                errorText = testo;
+              });
+            }
+          }
+        },);
 
     headlessWebView?.run();
 
@@ -98,8 +123,14 @@ class LoginState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     buttonLogin = ElevatedButton(
-      onPressed: statoPulsante
+      onPressed: statoPulsante && email.text.isNotEmpty && password.text.isNotEmpty
           ? () async {
+        if(mounted) {
+          setState(() {
+            statoPulsante = false;
+          });
+        }
+
               print("Pulsante premuto");
 
               String mail = email.text;
@@ -114,7 +145,11 @@ class LoginState extends State<LoginPage> {
             }
           : null,
       //style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
-      child: const Text("Log In"),
+      child: statoPulsante ? const Text("Log In") :  SizedBox(
+        height: Theme.of(context).textTheme.labelLarge?.fontSize,
+        width: Theme.of(context).textTheme.labelLarge?.fontSize,
+        child: const CircularProgressIndicator(strokeWidth: 1, ),
+      ),
     );
 
     return Scaffold(
@@ -160,6 +195,7 @@ class LoginState extends State<LoginPage> {
                   onEditingComplete: () => TextInput.finishAutofillContext(),
                 ),
               ),
+              Text(errorText, style: TextStyle(color: Theme.of(context).colorScheme.error)),
               Container(
                 padding: const EdgeInsets.all(20),
                 child: buttonLogin,
