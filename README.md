@@ -1,4 +1,4 @@
-# UniEats
+# <img src="android/app/src/main/ic_launcher-playstore.png" width="40" alt="Descrizione dell'immagine"> UniEats
 
 UniEats è un'applicazione che ti permette di visualizzare i menù di pranzo e cena per le varie mense dell'università. Questa applicazione è progettata per semplificare la vita degli studenti, offrendo informazioni aggiornate sui pasti disponibili in modo rapido e conveniente.
 
